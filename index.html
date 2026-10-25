@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bot Hub</title><style>
+:root{--bg:#0d0f13;--panel:#161a21;--line:#262c36;--fg:#e6e9ef;--mut:#8b93a1;--acc:#7aa2ff;--me:#24324f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;height:100dvh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+h1{font-size:16px;margin:0 8px 0 0}#tabs{display:flex;gap:6px;overflow-x:auto;flex:1}
+button{background:var(--line);color:var(--fg);border:0;border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer;white-space:nowrap}
+button.on{background:var(--acc);color:#0b0d12}#log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.m{max-width:80%;padding:8px 12px;border-radius:12px;background:var(--panel);white-space:pre-wrap;word-wrap:break-word}
+.m.me{align-self:flex-end;background:var(--me)}.m.err{color:#ff8a8a}.t{font-size:11px;color:var(--mut);margin-top:2px}
+form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:var(--panel)}
+textarea{flex:1;resize:none;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;height:44px}
+#set{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center}
+#set div{background:var(--panel);padding:18px;border-radius:12px;width:min(420px,92vw);display:flex;flex-direction:column;gap:10px}
+input{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+#st{font-size:12px;color:var(--mut)}</style></head><body>
+<header><h1>Bot Hub</h1><nav id="tabs"></nav><span id="st"></span><button id="gear" title="Settings">⚙</button></header>
+<main id="log"></main>
+<form id="f"><textarea id="txt" placeholder="Message…"></textarea><button>Send</button></form>
+<section id="set"><div><b>Settings</b><label>Relay URL<br><input id="su" placeholder="https://…"></label>
+<label>Access token<br><input id="sk" type="password"></label><button id="save">Save</button></div></section>
+<script>
+const BOTS=[["dr-eggbot","dr eggbot"],["nr-wyne","Nr. Wyne"],["nr-wrenby","Nr. Wrenby"]];
+const $=id=>document.getElementById(id),LS=localStorage;let cur=LS.botHubTab||BOTS[0][0];
+const hist=b=>JSON.parse(LS['h_'+b]||'[]'),save=(b,h)=>LS['h_'+b]=JSON.stringify(h.slice(-300));
+const cfg=()=>({u:(LS.relayUrl||'').replace(/\/$/,''),k:LS.relayToken||''});
+function tabs(){$('tabs').innerHTML='';BOTS.forEach(([s,n])=>{const b=document.createElement('button');b.textContent=n;b.className=s==cur?'on':'';b.onclick=()=>{cur=s;LS.botHubTab=s;tabs();render()};$('tabs').append(b)})}
+function render(){const l=$('log');l.innerHTML='';hist(cur).forEach(m=>{const d=document.createElement('div');d.className='m '+(m.who||'');d.textContent=m.text;const t=document.createElement('div');t.className='t';t.textContent=new Date(m.ts).toLocaleTimeString();d.append(t);l.append(d)});l.scrollTop=l.scrollHeight}
+function add(b,m){const h=hist(b);h.push(m);save(b,h);if(b==cur)render()}
+async function api(p,o={}){const{u,k}=cfg();if(!u||!k){$('set').style.display='flex';throw Error('Set relay URL and token')}
+ const r=await fetch(u+p,{...o,headers:{'Content-Type':'application/json','X-Access-Token':k}});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||('HTTP '+r.status));return j}
+$('f').onsubmit=async e=>{e.preventDefault();const text=$('txt').value.trim();if(!text)return;$('txt').value='';const b=cur;add(b,{who:'me',text,ts:Date.now()});
+ try{await api('/send',{method:'POST',body:JSON.stringify({bot:b,text})})}catch(x){add(b,{who:'err',text:'Not sent: '+x.message,ts:Date.now()})}};
+$('txt').onkeydown=e=>{if(e.key=='Enter'&&!e.shiftKey){e.preventDefault();$('f').requestSubmit()}};
+async function poll(){for(const[b]of BOTS){try{const since=+(LS['s_'+b]||0);const j=await api('/replies?bot='+b+'&since='+since);
+ for(const r of j.replies){add(b,{text:r.text,ts:r.ts});LS['s_'+b]=Math.max(+(LS['s_'+b]||0),r.ts)}$('st').textContent='connected'}catch(x){$('st').textContent=x.message}}}
+$('gear').onclick=()=>{$('su').value=LS.relayUrl||'';$('sk').value=LS.relayToken||'';$('set').style.display='flex'};
+$('save').onclick=()=>{LS.relayUrl=$('su').value.trim();LS.relayToken=$('sk').value.trim();$('set').style.display='none';poll()};
+tabs();render();if(!cfg().u)$('set').style.display='flex';poll();setInterval(poll,3000);
+</script></body></html>
