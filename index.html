@@ -55,12 +55,14 @@ dialog label{display:block;color:var(--muted);font-size:13px;margin:10px 0 4px}
   <h2>Relay settings</h2>
   <label for="relay">Relay URL</label>
   <input id="relay" type="url" placeholder="https://bot-hub.your-tailnet.ts.net" autocomplete="off">
+  <p class="note" id="relaynote" style="color:var(--err)"></p>
   <label for="token">Access token</label>
   <input id="token" type="password" autocomplete="off">
   <p class="note">Saved only in this browser's localStorage. The relay is reachable only on your Tailscale network.</p>
   <div class="row"><button class="ghost" type="button" id="cancel">Cancel</button><button class="btn" type="button" id="save">Save</button></div>
 </dialog>
 <script>
+const dlg=document.getElementById("settings");
 const BOTS=[{slug:"dr-eggbot",name:"dr eggbot"},{slug:"nr-wyne",name:"Nr. Wyne"},{slug:"nr-wrenby",name:"Nr. Wrenby"}];
 const $=id=>document.getElementById(id);
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage.getItem("bothub:"+k))??d}catch{return d}},set:(k,v)=>localStorage.setItem("bothub:"+k,JSON.stringify(v))};
@@ -88,16 +90,27 @@ function renderThread(){
   t.scrollTop=t.scrollHeight;
 }
 
+function relayOk(u){
+  try{const x=new URL(u);
+    const local=x.protocol==="http:"&&(x.hostname==="localhost"||x.hostname==="127.0.0.1");
+    if(x.protocol!=="https:"&&!local)return false;
+    if(x.origin===location.origin||/(^|\.)github\.io$/i.test(x.hostname))return false;
+    return true}catch{return false}
+}
 async function api(path,opts={}){
-  const c=cfg();if(!c.relay||!c.token)throw new Error("setup");
+  const c=cfg();if(!relayOk(c.relay))throw new Error("badurl");if(!c.token)throw new Error("setup");
   let r;
   try{r=await fetch(base()+path,{...opts,headers:{"Content-Type":"application/json","X-Access-Token":c.token,...(opts.headers||{})}})}
   catch(e){throw new Error("unreachable")}
-  let j={};try{j=await r.json()}catch{}
+  let j=null;try{j=await r.json()}catch{}
   if(r.status===401)throw new Error("auth");
-  return {ok:r.ok,status:r.status,body:j};
+  if(!r.ok&&(!j||typeof j!=="object")){const hint=(r.status===405||r.status===404)?" (wrong relay URL?)":"";j={error:"Relay returned HTTP "+r.status+hint}}
+  return {ok:r.ok,status:r.status,body:j||{}};
 }
+const BADURL="Relay URL not set. Paste the https://bot-hub….ts.net URL from dr eggbot in settings";
+function openSettings(){const c=cfg();$("relay").value=c.relay;$("token").value=c.token;if(!dlg.open)dlg.showModal()}
 function explain(e){
+  if(e.message==="badurl"){openSettings();return BADURL}
   if(e.message==="setup")return "Open Settings and enter your relay URL and access token.";
   if(e.message==="unreachable")return "Can't reach the relay. Make sure this device is connected to Tailscale and the relay is running.";
   if(e.message==="auth")return "The relay rejected the access token. Check it in Settings.";
@@ -108,14 +121,15 @@ $("form").onsubmit=async ev=>{
   ev.preventDefault();const text=$("msg").value.trim();if(!text)return;
   const slug=current,m={from:"me",text,ts:Date.now()};threads[slug].push(m);$("msg").value="";save(slug);renderThread();
   try{const r=await api("/send",{method:"POST",body:JSON.stringify({bot:slug,text})});
-    if(!r.ok)m.failed=r.body.error||("relay error "+r.status);else banner("");
-  }catch(e){m.failed=e.message==="unreachable"?"relay unreachable":e.message;banner(explain(e))}
+    if(!r.ok){const er=typeof r.body.error==="string"&&!/</.test(r.body.error)?r.body.error:"Relay returned HTTP "+r.status;m.failed=er;banner(er)}else banner("");
+  }catch(e){const t=explain(e);m.failed=e.message==="unreachable"?"relay unreachable":t;banner(t)}
   save(slug);if(slug===current)renderThread();
 };
 $("msg").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("form").requestSubmit()}});
 
 async function poll(){
-  if(!cfg().relay||!cfg().token){banner(explain(new Error("setup")));return}
+  if(!relayOk(cfg().relay)){banner(BADURL);return}
+  if(!cfg().token){banner(explain(new Error("setup")));return}
   try{
     for(const b of BOTS){
       const r=await api("/replies?bot="+encodeURIComponent(b.slug)+"&since="+since[b.slug]);
@@ -130,13 +144,12 @@ async function poll(){
   }catch(e){banner(explain(e))}
 }
 
-const dlg=$("settings");
-$("gear").onclick=()=>{const c=cfg();$("relay").value=c.relay;$("token").value=c.token;dlg.showModal()};
+$("gear").onclick=openSettings;
 $("cancel").onclick=()=>dlg.close();
-$("save").onclick=()=>{ls.set("settings",{relay:$("relay").value.trim(),token:$("token").value.trim()});dlg.close();poll()};
+$("save").onclick=()=>{const relay=$("relay").value.trim().replace(/\/+$/,"");if(!relayOk(relay)){$("relaynote").textContent=BADURL;return}$("relaynote").textContent="";ls.set("settings",{relay,token:$("token").value.trim()});dlg.close();poll()};
 
 renderSidebar();renderThread();
-if(!cfg().relay||!cfg().token)dlg.showModal();
+if(!relayOk(cfg().relay)||!cfg().token)openSettings();
 poll();setInterval(poll,3000);
 </script>
 </body>
