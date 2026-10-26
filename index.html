@@ -14,7 +14,7 @@ aside h1{font-size:18px;margin:0 8px 14px}
 .bot:hover{background:#1e222b}.bot.active{background:#222838;color:var(--accent)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);visibility:hidden}.bot.unread .dot{visibility:visible}
 .spacer{flex:1}
-#gear{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:8px;font:inherit;cursor:pointer}
+.adv{color:var(--muted);font-size:12px;margin:0 10px;text-decoration:none;opacity:.6}.adv:hover{opacity:1}
 main{flex:1;display:flex;flex-direction:column;min-width:0}
 header{padding:14px 20px;border-bottom:1px solid var(--line);font-weight:600}
 #banner{display:none;background:#3a1d20;color:#ffb3b5;padding:10px 20px;font-size:14px;border-bottom:1px solid #5a2a2e}
@@ -40,7 +40,7 @@ dialog label{display:block;color:var(--muted);font-size:13px;margin:10px 0 4px}
   <h1>Bot Hub</h1>
   <div id="bots"></div>
   <div class="spacer"></div>
-  <button id="gear" type="button">⚙ Settings</button>
+  <a href="#" id="gear" class="adv">advanced</a>
 </aside>
 <main>
   <header id="title"></header>
@@ -52,11 +52,11 @@ dialog label{display:block;color:var(--muted);font-size:13px;margin:10px 0 4px}
   </form>
 </main>
 <dialog id="settings">
-  <h2>Relay settings</h2>
+  <h2>Advanced</h2><p class="note">Optional. Leave blank to use the default relay.</p>
   <label for="relay">Relay URL</label>
-  <input id="relay" type="url" placeholder="https://bot-hub.your-tailnet.ts.net" autocomplete="off">
+  <input id="relay" type="url" placeholder="https://bot-hub.tail952f67.ts.net" autocomplete="off">
   <p class="note" id="relaynote" style="color:var(--err)"></p>
-  <label for="token">Access token</label>
+  <label for="token">Access token (optional)</label>
   <input id="token" type="password" autocomplete="off">
   <p class="note">Saved only in this browser's localStorage. The relay is reachable only on your Tailscale network.</p>
   <div class="row"><button class="ghost" type="button" id="cancel">Cancel</button><button class="btn" type="button" id="save">Save</button></div>
@@ -69,7 +69,8 @@ const ls={get:(k,d)=>{try{return JSON.parse(localStorage.getItem("bothub:"+k))??
 let current=BOTS[0].slug;
 const threads={},since={};
 BOTS.forEach(b=>{threads[b.slug]=ls.get("thread:"+b.slug,[]);since[b.slug]=ls.get("since:"+b.slug,0)});
-const cfg=()=>ls.get("settings",{relay:"",token:""});
+const DEFAULT_RELAY="https://bot-hub.tail952f67.ts.net";
+const cfg=()=>{const c=ls.get("settings",{});return {relay:(c.relay&&relayOk(c.relay))?c.relay:DEFAULT_RELAY,token:c.token||""}};
 const base=()=>cfg().relay.replace(/\/+$/,"");
 
 function banner(t){const b=$("banner");b.textContent=t||"";b.style.display=t?"block":"none"}
@@ -98,22 +99,22 @@ function relayOk(u){
     return true}catch{return false}
 }
 async function api(path,opts={}){
-  const c=cfg();if(!relayOk(c.relay))throw new Error("badurl");if(!c.token)throw new Error("setup");
+  const c=cfg();if(!relayOk(c.relay))throw new Error("badurl");
   let r;
-  try{r=await fetch(base()+path,{...opts,headers:{"Content-Type":"application/json","X-Access-Token":c.token,...(opts.headers||{})}})}
+  try{r=await fetch(base()+path,{...opts,headers:{"Content-Type":"application/json",...(c.token?{"X-Access-Token":c.token}:{}),...(opts.headers||{})}})}
   catch(e){throw new Error("unreachable")}
   let j=null;try{j=await r.json()}catch{}
   if(r.status===401)throw new Error("auth");
   if(!r.ok&&(!j||typeof j!=="object")){const hint=(r.status===405||r.status===404)?" (wrong relay URL?)":"";j={error:"Relay returned HTTP "+r.status+hint}}
   return {ok:r.ok,status:r.status,body:j||{}};
 }
-const BADURL="Relay URL not set. Paste the https://bot-hub….ts.net URL from dr eggbot in settings";
-function openSettings(){const c=cfg();$("relay").value=c.relay;$("token").value=c.token;if(!dlg.open)dlg.showModal()}
+const BADURL="Invalid relay URL. Use an https://….ts.net address, or leave it blank for the default";
+function openSettings(){const c=cfg();$("relay").value=c.relay===DEFAULT_RELAY?"":c.relay;$("token").value=c.token;if(!dlg.open)dlg.showModal()}
 function explain(e){
   if(e.message==="badurl"){openSettings();return BADURL}
-  if(e.message==="setup")return "Open Settings and enter your relay URL and access token.";
+  if(e.message==="setup")return "Relay setup problem.";
   if(e.message==="unreachable")return "Can't reach the relay. Make sure this device is connected to Tailscale and the relay is running.";
-  if(e.message==="auth")return "The relay rejected the access token. Check it in Settings.";
+  if(e.message==="auth")return "The relay rejected the request (401).";
   return "Something went wrong: "+e.message;
 }
 
@@ -129,7 +130,6 @@ $("msg").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preve
 
 async function poll(){
   if(!relayOk(cfg().relay)){banner(BADURL);return}
-  if(!cfg().token){banner(explain(new Error("setup")));return}
   try{
     for(const b of BOTS){
       const r=await api("/replies?bot="+encodeURIComponent(b.slug)+"&since="+since[b.slug]);
@@ -144,12 +144,12 @@ async function poll(){
   }catch(e){banner(explain(e))}
 }
 
-$("gear").onclick=openSettings;
+$("gear").onclick=e=>{e.preventDefault();openSettings()};
 $("cancel").onclick=()=>dlg.close();
-$("save").onclick=()=>{const relay=$("relay").value.trim().replace(/\/+$/,"");if(!relayOk(relay)){$("relaynote").textContent=BADURL;return}$("relaynote").textContent="";ls.set("settings",{relay,token:$("token").value.trim()});dlg.close();poll()};
+$("save").onclick=()=>{const relay=$("relay").value.trim().replace(/\/+$/,"")||DEFAULT_RELAY;if(!relayOk(relay)){$("relaynote").textContent=BADURL;return}$("relaynote").textContent="";ls.set("settings",{relay:relay===DEFAULT_RELAY?"":relay,token:$("token").value.trim()});dlg.close();poll()};
 
 renderSidebar();renderThread();
-if(!relayOk(cfg().relay)||!cfg().token)openSettings();
+{const old=ls.get("settings",null);if(old&&old.relay&&!relayOk(old.relay)){old.relay="";ls.set("settings",old)}}
 poll();setInterval(poll,3000);
 </script>
 </body>

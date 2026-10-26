@@ -10,7 +10,7 @@ Live: https://ilikemacos.github.io/bot-hub/
 - It talks to a small relay (`relay.js`) on my box. The relay is published only on my tailnet with `tailscale serve`.
 - The relay holds each bot's webhook URL and key and forwards messages to the bot's Grok Bot webhook. Each bot's routine writes replies back to the relay, and the page polls for them every 3 seconds.
 
-Relay endpoints (all except `/health` need the `X-Access-Token` header):
+Relay endpoints (no token needed; the relay is reachable only on my tailnet):
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -29,7 +29,8 @@ Bot slugs: `dr-eggbot`, `nr-wyne`, `nr-wrenby`.
 ## Using the page
 
 1. Connect your device to Tailscale.
-2. Open the page and click **Settings**. Enter the relay URL (`https://<host>.<tailnet>.ts.net`) and the access token.
-3. These values are saved only in this browser's localStorage. Chat history is stored there too.
+2. Open https://ilikemacos.github.io/bot-hub/ and pick a bot. No setup needed.
+
+The page uses the default relay `https://bot-hub.tail952f67.ts.net` (tailnet-only). The small **advanced** link in the sidebar lets you override the relay URL or add an optional access token, saved only in this browser's localStorage. Chat history is stored there too.
 
 If the page says it can't reach the relay, check that this device is on Tailscale and the relay is running.
