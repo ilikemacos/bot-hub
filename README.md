@@ -1,36 +1,27 @@
 # Bot Hub
 
-One web chat for my Grok Bots: dr eggbot, Nr. Wyne and Nr. Wrenby.
+One web page for messaging my Grok Bots: dr eggbot, Nr. Wyne and Nr. Wrenby.
 
 Live: https://ilikemacos.github.io/bot-hub/
 
 ## How it works
 
-- This page is static (GitHub Pages). It holds no secrets.
-- It talks to a small relay (`relay.js`) on my box. The relay is published only on my tailnet with `tailscale serve`.
-- The relay holds each bot's webhook URL and key and forwards messages to the bot's Grok Bot webhook. Each bot's routine writes replies back to the relay, and the page polls for them every 3 seconds.
+The page is static (GitHub Pages). There's no relay or server. The browser POSTs straight to each bot's Grok Bot webhook:
 
-Relay endpoints (no token needed; the relay is reachable only on my tailnet):
+- Headers: `Content-Type: application/json` and `Authorization: Bearer <key>`
+- Body: `{"id": "<uuid>", "text": "<message>", "action": "chat"}`
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/health` | Status and bot list |
-| POST | `/send` | `{"bot": "<slug>", "text": "..."}` |
-| GET | `/replies?bot=<slug>&since=<ms>` | Replies newer than `since` |
+Replies arrive in each bot's chat in the Grok Bot app, not on this page.
 
-Bot slugs: `dr-eggbot`, `nr-wyne`, `nr-wrenby`.
+## Setup
 
-## Relay setup (on the box)
+1. Open the page and pick a bot.
+2. The first time, paste that bot's webhook key into the inline field (with or without `Bearer `). Use **change key** to replace it.
 
-1. Run the relay: `node relay.js` (listens on port 8787). Webhook URLs live in `config.json`, which is never committed. Keys come from environment variables.
-2. Publish it on your tailnet: `sudo tailscale serve --bg --https=443 http://127.0.0.1:8787`
-3. Check it with `tailscale serve status` and `curl https://<host>.<tailnet>.ts.net/health`.
+Keys and message history are stored only in your browser's localStorage. No keys are in this repo. The webhook URLs in the page aren't secret on their own.
 
-## Using the page
+## Status messages
 
-1. Connect your device to Tailscale.
-2. Open https://ilikemacos.github.io/bot-hub/ and pick a bot. No setup needed.
-
-The page uses the default relay `https://bot-hub.tail952f67.ts.net` (tailnet-only). The small **advanced** link in the sidebar lets you override the relay URL or add an optional access token, saved only in this browser's localStorage. Chat history is stored there too.
-
-If the page says it can't reach the relay, check that this device is on Tailscale and the relay is running.
+- **Sent ✓**: the webhook accepted the message.
+- **Wrong key (401/403)**: re-enter the key.
+- **Couldn't confirm**: a network or CORS error hid the response. The message may still have gone through.

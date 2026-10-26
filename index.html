@@ -5,152 +5,96 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bot Hub</title>
 <style>
-:root{--bg:#0f1115;--panel:#171a21;--line:#262b36;--text:#e6e8ee;--muted:#8b93a7;--accent:#6ea8fe;--me:#24406e;--err:#f2555a;--ok:#4cc38a}
+:root{--bg:#0f1115;--panel:#171a21;--line:#262b36;--text:#e6e8ee;--muted:#8b93a7;--accent:#6ea8fe;--me:#24406e;--err:#f2555a;--ok:#4cc38a;--warn:#e5b35b}
 *{box-sizing:border-box}html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex}
-aside{width:230px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:16px 10px}
+aside{width:220px;background:var(--panel);border-right:1px solid var(--line);padding:16px 10px}
 aside h1{font-size:18px;margin:0 8px 14px}
-.bot{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;color:var(--text);padding:10px;border-radius:8px;font:inherit;cursor:pointer}
+.bot{display:block;width:100%;text-align:left;background:none;border:0;color:var(--text);padding:10px;border-radius:8px;font:inherit;cursor:pointer}
 .bot:hover{background:#1e222b}.bot.active{background:#222838;color:var(--accent)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);visibility:hidden}.bot.unread .dot{visibility:visible}
-.spacer{flex:1}
-.adv{color:var(--muted);font-size:12px;margin:0 10px;text-decoration:none;opacity:.6}.adv:hover{opacity:1}
 main{flex:1;display:flex;flex-direction:column;min-width:0}
-header{padding:14px 20px;border-bottom:1px solid var(--line);font-weight:600}
-#banner{display:none;background:#3a1d20;color:#ffb3b5;padding:10px 20px;font-size:14px;border-bottom:1px solid #5a2a2e}
+header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+header b{flex:1}
+.link{color:var(--muted);font-size:12px;background:none;border:0;cursor:pointer;font:inherit;font-size:12px;text-decoration:underline}
 #thread{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:10px}
-.msg{max-width:75%;padding:9px 13px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
-.msg.me{align-self:flex-end;background:var(--me)}.msg.bot{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
-.msg .meta{display:block;font-size:11px;color:var(--muted);margin-top:4px}.msg.failed .meta{color:var(--err)}
+.msg{max-width:75%;align-self:flex-end;background:var(--me);padding:9px 13px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
+.meta{display:block;font-size:11px;margin-top:4px;color:#b8c4dd}
+.meta.ok{color:var(--ok)}.meta.err{color:var(--err)}.meta.warn{color:var(--warn)}
 .empty{color:var(--muted);text-align:center;margin-top:40px}
+.keybox{margin:12px 20px 0;padding:12px;border:1px dashed var(--line);border-radius:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.keybox span{color:var(--muted);font-size:13px;width:100%}
 form{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--line)}
-textarea,input{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 11px;font:inherit;width:100%}
+textarea,input{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 11px;font:inherit;flex:1}
 textarea{resize:none;height:44px}
-.btn{background:var(--accent);color:#0b0d12;border:0;border-radius:8px;padding:0 18px;font:inherit;font-weight:600;cursor:pointer}
-dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;width:min(420px,90vw);padding:20px}
-dialog::backdrop{background:#0008}dialog h2{margin:0 0 8px;font-size:17px}
-dialog label{display:block;color:var(--muted);font-size:13px;margin:10px 0 4px}
-.note{color:var(--muted);font-size:12px}.row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}.row .btn{padding:8px 16px}
-.ghost{background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 16px;font:inherit;cursor:pointer}
-@media(max-width:640px){body{flex-direction:column}aside{width:auto;flex-direction:row;flex-wrap:wrap;padding:8px}aside h1{display:none}.spacer{display:none}}
+.btn{background:var(--accent);color:#0b0d12;border:0;border-radius:8px;padding:8px 18px;font:inherit;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.5}
+.foot{color:var(--muted);font-size:12px;padding:0 20px 10px}
+@media(max-width:640px){body{flex-direction:column}aside{width:auto;display:flex;padding:8px}aside h1{display:none}}
 </style>
 </head>
 <body>
-<aside>
-  <h1>Bot Hub</h1>
-  <div id="bots"></div>
-  <div class="spacer"></div>
-  <a href="#" id="gear" class="adv">advanced</a>
-</aside>
+<aside><h1>Bot Hub</h1><div id="bots"></div></aside>
 <main>
-  <header id="title"></header>
-  <div id="banner"></div>
+  <header><b id="title"></b><button class="link" id="chkey" type="button">change key</button></header>
+  <div id="keybox" class="keybox" hidden>
+    <span>Paste this bot's webhook key to start (stored only in this browser).</span>
+    <input id="keyin" type="password" placeholder="Bearer … or just the key" autocomplete="off">
+    <button class="btn" id="keysave" type="button">Save</button>
+  </div>
   <div id="thread"></div>
   <form id="form">
     <textarea id="msg" placeholder="Message… (Enter to send, Shift+Enter for newline)"></textarea>
-    <button class="btn" type="submit">Send</button>
+    <button class="btn" id="send" type="submit">Send</button>
   </form>
+  <div class="foot">Replies arrive in each bot's Grok Bot app chat, not here.</div>
 </main>
-<dialog id="settings">
-  <h2>Advanced</h2><p class="note">Optional. Leave blank to use the default relay.</p>
-  <label for="relay">Relay URL</label>
-  <input id="relay" type="url" placeholder="https://bot-hub.tail952f67.ts.net" autocomplete="off">
-  <p class="note" id="relaynote" style="color:var(--err)"></p>
-  <label for="token">Access token (optional)</label>
-  <input id="token" type="password" autocomplete="off">
-  <p class="note">Saved only in this browser's localStorage. The relay is reachable only on your Tailscale network.</p>
-  <div class="row"><button class="ghost" type="button" id="cancel">Cancel</button><button class="btn" type="button" id="save">Save</button></div>
-</dialog>
 <script>
-const dlg=document.getElementById("settings");
-const BOTS=[{slug:"dr-eggbot",name:"dr eggbot"},{slug:"nr-wyne",name:"Nr. Wyne"},{slug:"nr-wrenby",name:"Nr. Wrenby"}];
+const BOTS=[
+ {slug:"dr-eggbot",name:"dr eggbot",url:"https://api2.cursor.sh/automations/webhook/3835ed94-57bc-5874-ade7-ee245615ff4c"},
+ {slug:"nr-wyne",name:"Nr. Wyne",url:"https://api2.cursor.sh/automations/webhook/a3928e01-3500-51d5-9d1e-40a9c52ad86a"},
+ {slug:"nr-wrenby",name:"Nr. Wrenby",url:"https://api2.cursor.sh/automations/webhook/130d1793-ff07-50d8-89e5-9317e3df06f5"}];
 const $=id=>document.getElementById(id);
 const ls={get:(k,d)=>{try{return JSON.parse(localStorage.getItem("bothub:"+k))??d}catch{return d}},set:(k,v)=>localStorage.setItem("bothub:"+k,JSON.stringify(v))};
-let current=BOTS[0].slug;
-const threads={},since={};
-BOTS.forEach(b=>{threads[b.slug]=ls.get("thread:"+b.slug,[]);since[b.slug]=ls.get("since:"+b.slug,0)});
-const DEFAULT_RELAY="https://bot-hub.tail952f67.ts.net";
-const cfg=()=>{const c=ls.get("settings",{});return {relay:(c.relay&&relayOk(c.relay))?c.relay:DEFAULT_RELAY,token:c.token||""}};
-const base=()=>cfg().relay.replace(/\/+$/,"");
+// drop leftovers from the old relay version
+["settings"].forEach(k=>localStorage.removeItem("bothub:"+k));
+BOTS.forEach(b=>{localStorage.removeItem("bothub:since:"+b.slug);localStorage.removeItem("bothub:unread:"+b.slug)});
+let cur=BOTS[0];
+const keyOf=b=>ls.get("key:"+b.slug,"");
+const hist=b=>ls.get("thread:"+b.slug,[]).filter(m=>m.from!=="bot");
+const fmt=ts=>new Date(ts).toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
 
-function banner(t){const b=$("banner");b.textContent=t||"";b.style.display=t?"block":"none"}
-function save(slug){threads[slug]=threads[slug].slice(-300);ls.set("thread:"+slug,threads[slug]);ls.set("since:"+slug,since[slug])}
-const fmt=ts=>new Date(ts).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
-
-function renderSidebar(){
+function render(){
   $("bots").innerHTML="";
-  BOTS.forEach(b=>{const el=document.createElement("button");el.type="button";el.className="bot"+(b.slug===current?" active":"")+(ls.get("unread:"+b.slug,false)?" unread":"");
-    el.innerHTML='<span class="dot"></span>';el.append(b.name);el.onclick=()=>{current=b.slug;ls.set("unread:"+b.slug,false);renderSidebar();renderThread()};$("bots").append(el)});
-}
-function renderThread(){
-  const b=BOTS.find(x=>x.slug===current);$("title").textContent=b.name;
-  const t=$("thread");t.innerHTML="";
-  if(!threads[current].length){const e=document.createElement("div");e.className="empty";e.textContent="No messages yet. Say hi to "+b.name+".";t.append(e)}
-  threads[current].forEach(m=>{const d=document.createElement("div");d.className="msg "+(m.from==="me"?"me":"bot")+(m.failed?" failed":"");
-    d.textContent=m.text;const s=document.createElement("span");s.className="meta";s.textContent=(m.failed?"Not delivered: "+m.failed+" · ":"")+fmt(m.ts);d.append(s);t.append(d)});
+  BOTS.forEach(b=>{const el=document.createElement("button");el.type="button";el.className="bot"+(b===cur?" active":"");el.textContent=b.name;el.onclick=()=>{cur=b;render()};$("bots").append(el)});
+  $("title").textContent=cur.name;
+  const hasKey=!!keyOf(cur);
+  $("keybox").hidden=hasKey;$("chkey").hidden=!hasKey;$("keyin").value="";
+  $("send").disabled=!hasKey;
+  const t=$("thread");t.innerHTML="";const h=hist(cur);
+  if(!h.length){const e=document.createElement("div");e.className="empty";e.textContent="No messages yet. Say hi to "+cur.name+".";t.append(e)}
+  h.forEach(m=>{const d=document.createElement("div");d.className="msg";d.textContent=m.text;
+    const s=document.createElement("span");s.className="meta "+(m.cls||"");s.textContent=fmt(m.ts)+(m.status?" · "+m.status:"");d.append(s);t.append(d)});
   t.scrollTop=t.scrollHeight;
 }
 
-function relayOk(u){
-  try{const x=new URL(u);
-    const local=x.protocol==="http:"&&(x.hostname==="localhost"||x.hostname==="127.0.0.1");
-    if(x.protocol!=="https:"&&!local)return false;
-    if(x.origin===location.origin||/(^|\.)github\.io$/i.test(x.hostname))return false;
-    return true}catch{return false}
-}
-async function api(path,opts={}){
-  const c=cfg();if(!relayOk(c.relay))throw new Error("badurl");
-  let r;
-  try{r=await fetch(base()+path,{...opts,headers:{"Content-Type":"application/json",...(c.token?{"X-Access-Token":c.token}:{}),...(opts.headers||{})}})}
-  catch(e){throw new Error("unreachable")}
-  let j=null;try{j=await r.json()}catch{}
-  if(r.status===401)throw new Error("auth");
-  if(!r.ok&&(!j||typeof j!=="object")){const hint=(r.status===405||r.status===404)?" (wrong relay URL?)":"";j={error:"Relay returned HTTP "+r.status+hint}}
-  return {ok:r.ok,status:r.status,body:j||{}};
-}
-const BADURL="Invalid relay URL. Use an https://….ts.net address, or leave it blank for the default";
-function openSettings(){const c=cfg();$("relay").value=c.relay===DEFAULT_RELAY?"":c.relay;$("token").value=c.token;if(!dlg.open)dlg.showModal()}
-function explain(e){
-  if(e.message==="badurl"){openSettings();return BADURL}
-  if(e.message==="setup")return "Relay setup problem.";
-  if(e.message==="unreachable")return "Can't reach the relay. Make sure this device is connected to Tailscale and the relay is running.";
-  if(e.message==="auth")return "The relay rejected the request (401).";
-  return "Something went wrong: "+e.message;
-}
+$("keysave").onclick=()=>{const v=$("keyin").value.trim().replace(/^Bearer\s+/i,"");if(!v)return;ls.set("key:"+cur.slug,v);render();$("msg").focus()};
+$("keyin").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("keysave").click()}});
+$("chkey").onclick=()=>{$("keybox").hidden=false;$("keyin").focus()};
 
 $("form").onsubmit=async ev=>{
-  ev.preventDefault();const text=$("msg").value.trim();if(!text)return;
-  const slug=current,m={from:"me",text,ts:Date.now()};threads[slug].push(m);$("msg").value="";save(slug);renderThread();
-  try{const r=await api("/send",{method:"POST",body:JSON.stringify({bot:slug,text})});
-    if(!r.ok){const er=typeof r.body.error==="string"&&!/</.test(r.body.error)?r.body.error:"Relay returned HTTP "+r.status;m.failed=er;banner(er)}else banner("");
-  }catch(e){const t=explain(e);m.failed=e.message==="unreachable"?"relay unreachable":t;banner(t)}
-  save(slug);if(slug===current)renderThread();
+  ev.preventDefault();const text=$("msg").value.trim(),b=cur,key=keyOf(b);if(!text||!key)return;
+  const h=hist(b),m={from:"me",text,ts:Date.now(),status:"Sending…"};h.push(m);ls.set("thread:"+b.slug,h.slice(-300));$("msg").value="";render();
+  try{
+    const r=await fetch(b.url,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({id:crypto.randomUUID(),text,action:"chat"})});
+    if(r.ok){m.status="Sent ✓ — reply arrives in "+b.name+"'s Grok Bot chat";m.cls="ok"}
+    else if(r.status===401||r.status===403){m.status="Wrong key ("+r.status+"). Use “change key” to fix it.";m.cls="err"}
+    else{m.status="Error: webhook returned HTTP "+r.status;m.cls="err"}
+  }catch(e){m.status="The browser couldn't confirm delivery (network/CORS). It may still have gone through.";m.cls="warn"}
+  ls.set("thread:"+b.slug,h.slice(-300));if(b===cur)render();
 };
 $("msg").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("form").requestSubmit()}});
-
-async function poll(){
-  if(!relayOk(cfg().relay)){banner(BADURL);return}
-  try{
-    for(const b of BOTS){
-      const r=await api("/replies?bot="+encodeURIComponent(b.slug)+"&since="+since[b.slug]);
-      if(!r.ok)continue;
-      const reps=(r.body.replies||[]).filter(x=>x.ts>since[b.slug]);
-      if(!reps.length)continue;
-      reps.forEach(x=>{threads[b.slug].push({from:"bot",text:x.text,ts:x.ts});since[b.slug]=Math.max(since[b.slug],x.ts)});
-      save(b.slug);
-      if(b.slug===current)renderThread();else ls.set("unread:"+b.slug,true);
-    }
-    banner("");renderSidebar();
-  }catch(e){banner(explain(e))}
-}
-
-$("gear").onclick=e=>{e.preventDefault();openSettings()};
-$("cancel").onclick=()=>dlg.close();
-$("save").onclick=()=>{const relay=$("relay").value.trim().replace(/\/+$/,"")||DEFAULT_RELAY;if(!relayOk(relay)){$("relaynote").textContent=BADURL;return}$("relaynote").textContent="";ls.set("settings",{relay:relay===DEFAULT_RELAY?"":relay,token:$("token").value.trim()});dlg.close();poll()};
-
-renderSidebar();renderThread();
-{const old=ls.get("settings",null);if(old&&old.relay&&!relayOk(old.relay)){old.relay="";ls.set("settings",old)}}
-poll();setInterval(poll,3000);
+render();
 </script>
 </body>
 </html>
